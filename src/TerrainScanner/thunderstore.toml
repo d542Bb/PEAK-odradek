@@ -1,0 +1,55 @@
+schemaVersion = "0.0.2"
+
+[general]
+repository = "https://thunderstore.io"
+
+[package]
+namespace = "blumewmew"
+name = "TerrainScanner"
+description = "TerrainScanner — Death Stranding style terrain scanner for PEAK. Provides persistent ground marks, scan outlines, and customizable visuals."
+websiteUrl = "https://github.com/haruyuki/TerrainScanner"
+containsNsfwContent = false
+authors = ["LIghtJUNction", "blumewmew"]
+readme = "./README.md"
+icon = "./icon.png"
+license = "./LICENSE"
+
+
+[package.dependencies]
+BepInEx-BepInExPack_PEAK = "5.4.75301"
+PEAKModding-PEAKLib_Core = "1.7.2"
+Cysharp-UniTask = "2.5.0"
+
+[build]
+icon = "./icon.png"
+readme = "./README.md"
+license = "./LICENSE"
+outdir = "../../artifacts/thunderstore/"
+
+[[build.copy]]
+source = "../../artifacts/bin/TerrainScanner/release/com.github.LIghtJUNction.TerrainScanner.dll"
+target = "plugins/"
+
+[[build.copy]]
+source = "./CHANGELOG.md"
+target = "/"
+
+[[build.copy]]
+source = "./LICENSE"
+target = "/"
+
+[[build.copy]]
+source = "./Assets"
+target = "/Assets"
+
+# The following config options only apply when using TCLI to publish to Thunderstore directly:
+
+[publish]
+# See communities at:
+# https://thunderstore.io/api/experimental/community/
+communities = [ "peak", ]
+
+[publish.categories]
+# See categories at:
+# https://thunderstore.io/api/experimental/community/peak/category/
+peak = [ "qol", "tools", "mods" ]

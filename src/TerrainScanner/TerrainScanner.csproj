@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>com.github.LIghtJUNction.TerrainScanner</AssemblyName>
+    <AssemblyTitle>TerrainScanner</AssemblyTitle>
+    <Version>1.1.2</Version>
+    <Nullable>disable</Nullable>
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG;TRACE;DEBUGUI</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PEAKModding.PEAKLib.Core" Version="1.7.2" />
+    <PackageReference Include="Cysharp-UniTask" Version="2.5.0" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="BepInEx.AssemblyPublicizer.MSBuild" Version="0.5.0-beta.1" />
+  </ItemGroup>
+
+</Project>
