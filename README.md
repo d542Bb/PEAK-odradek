@@ -4,6 +4,8 @@ PEAK 的地形扫描器 mod，基于 shader，由 GPU 渲染，采用异步逐�
 
 > 本项目最初从 [FengLvv/Death-stranding-scan](https://github.com/FengLvv/Death-stranding-scan) 移植而来。
 
+![TerrainScanner 截图](Assets/ScreenShot.png)
+
 ## What it shows / 功能
 
 Standability & slope classification（立足/坡面分级，按地形表面法线坡度判定，见 `ScanMarkRenderer`）：
@@ -19,7 +21,7 @@ Standability & slope classification（立足/坡面分级，按地形表面法�
 
 ## 快速开始 Quick start
 
-1. 将本项目脚本（或编译好的 DLL）放入你的 Unity 工程 `Assets/` 目录。源码位于本仓库根目录。
+1. 源码位于本仓库根目录：`TerrainScanner.cs`、`Config.cs`、`DS/`、`Assets/`。
 2. 在场景中把 `ActiveScan` 挂到某个 GameObject（例如玩家或相机）上。默认用 `F` 键触发（见 `ActiveScan.cs`）。
 3. 运行时确保 `ScanConfig` 正确填充所需材质与粒子预制体：`scanMaterial`、`markMaterial`，以及可选的 `markParticle1/2/3`。
 
@@ -27,13 +29,12 @@ Standability & slope classification（立足/坡面分级，按地形表面法�
 
 ## 配置要点
 
-大部分运行时选项位于 `ScanConfig`（`Config.cs`）：
+大部分运行时可调项位于 `ScanConfig`（`Config.cs`），并通过 BepInEx 以 `d542Bb.TerrainScanner.cfg` 暴露给玩家。开发者可在代码中调整：
 
-- `horizontalCount` / `verticalCount` — 采样大小。调大增加覆盖与精度，但消耗更多 CPU。
-- `gridStep` — 采样间距（米）。
-- `sampling_originHeightOffset` — 射线起点高于相机/玩家的高度，用于扫描更高地形。
-- `sampling_maxDistanceShort` / `sampling_maxDistanceLong` — 地面/边缘与远距离检测的射线长度。
-- `steepSpawnProb` / `midSpawnProb` / `flatSpawnProb` — 各类坡面的粒子生成概率。
+- `horizontalCount` / `verticalCount` — 视锥截面采样分辨率。
+- `markIconSize` 与 `markSafeColor` / `markWarningColor` / `markDangerColor` — 标记大小与三色。
+- `outlineWidth` / `outlineBrightness` / `outlineStarDistance` — 描边粗细与距离带。
+- `scanCooldown` / `sfxVolume` — 扫描冷却与音效音量。
 
 ## 性能建议 Performance
 
@@ -44,10 +45,6 @@ Standability & slope classification（立足/坡面分级，按地形表面法�
 
 - 只有部分标记被渲染：确认 CPU 侧 `Marks` 结构与 HLSL `Marks` StructuredBuffer 布局一致（字段顺序/大小），`ComputeBuffer` 用 `Marshal.SizeOf(typeof(Marks))` 作 stride，且实例化 shader 不在片元阶段写 `SV_DEPTH`。
 - 射线够不到高崖：增大 `sampling_originHeightOffset` 与 `sampling_maxDistanceShort`。
-
-## Roadmap — 智能地形扫描（下一大特性）
-
-Planned: an "Intelligent Terrain Scanner" that improves scanning quality while staying performant（能量传播模型、按剩余能量优先的探索队列、量化内存状态、终止/安全上限、运行时调参与可视化）。设计笔记详见 `DS/GradientAscent.md`。
 
 ## 项目出处
 

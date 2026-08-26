@@ -10,7 +10,7 @@ description = "TerrainScanner — Death Stranding style terrain scanner for PEAK
 websiteUrl = "https://github.com/d542Bb/PEAK-odradek"
 containsNsfwContent = false
 authors = ["LIghtJUNction", "blumewmew", "d542Bb"]
-readme = "./README.md"
+readme = "./README-THUNDERSTORE.md"
 icon = "./icon.png"
 license = "./LICENSE-MIT"
 
@@ -22,7 +22,7 @@ Cysharp-UniTask = "2.5.0"
 
 [build]
 icon = "./icon.png"
-readme = "./README.md"
+readme = "./README-THUNDERSTORE.md"
 license = "./LICENSE-MIT"
 outdir = "artifacts/thunderstore/"
 
