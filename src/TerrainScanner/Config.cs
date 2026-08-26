@@ -21,16 +21,16 @@ public class ScanConfig
     // Static Settings (defaults kept from original Settings)
     public Color scanColorHead = new Color(0.054901965f, 0.5686275f, 0.85098046f, 1f);
     public Color scanColor = new Color(0.38823533f, 0.7372549f, 0.8705883f, 1f);
-    public float outlineWidth = 2.48f;
+    public float outlineWidth = 1f;
     public float scanLineWidth = 1f;
-    public float scanLineInterval = 1f;
-    public float headScanLineWidth = 1f;
+    public float scanLineInterval = 1.5f;
+    public float headScanLineWidth = 2f;
 
     // Dynamics (controlled by code / config)
     public float scanLineBrightness = 2.5f;
     public float scanRange = 10f;
     public float outlineBrightness = 1.32f;
-    public float headScanLineDistance = 13.2f;
+    public float headScanLineDistance = 15f;
     public Vector3 scanCenterWS = new Vector3(123.05f, 36.3f, 147.86f);
     public float outlineStarDistance = 30f;
 
@@ -67,6 +67,23 @@ public class ScanConfig
     // Scan sfx playback volume (0..1)
     public float sfxVolume = 1f;
 
+    // TerrainMarks 图标缩放：白点/红叉等标记的整体大小（默认比原版 1 略小）
+    public float markIconSize = 1f;
+
+    // TerrainMarks 标记颜色（对应 shader 的 _SafeColor / _WarningColor / _DangerColor）
+    public Color markSafeColor = new Color(0.3f, 1f, 1f, 1f);      // 可站立白点(偏青)
+    public Color markWarningColor = new Color(1f, 1f, 0f, 1f);   // 警戒黄点
+    public Color markDangerColor = new Color(1f, 0f, 0f, 1f);    // 不可站立红叉
+
+    // 扫描动画目标值（由 ScanFeature.StartScan 的 DOFloat 使用）。
+    // ⚠️ 不建议修改：改这些会显著改变扫描视觉节奏，仅供高级调试。
+    public float animHeadScanLineDistance = 400f;       // 扫描线头部扩散的目标距离
+    public float animScanRange = 5f;                    // 扫描波范围目标（对应 shader scanRange）
+    public float animOutlineStarDistance = 30f;         // 描边距离带目标
+    public float animScanLineBrightnessPeak = 1f;       // 平行扫描线亮度峰值
+    public float animHeadScanLineBrightnessPeak = 1f;   // 头部扫描线亮度峰值
+    public float animOutlineBrightnessPeak = 1f;        // 描边亮度峰值
+
     // active scan key (can be changed at runtime)
     public KeyCode activeKey = KeyCode.F;
 
@@ -88,6 +105,16 @@ public class ScanConfig
     public ConfigEntry<int> cfgVerticalCount;
     public ConfigEntry<float> cfgScanCooldown;
     public ConfigEntry<float> cfgSfxVolume;
+    public ConfigEntry<float> cfgMarkIconSize;
+    public ConfigEntry<string> cfgMarkSafeColor;
+    public ConfigEntry<string> cfgMarkWarningColor;
+    public ConfigEntry<string> cfgMarkDangerColor;
+    public ConfigEntry<float> cfgAnimHeadScanLineDistance;
+    public ConfigEntry<float> cfgAnimScanRange;
+    public ConfigEntry<float> cfgAnimOutlineStarDistance;
+    public ConfigEntry<float> cfgAnimScanLineBrightnessPeak;
+    public ConfigEntry<float> cfgAnimHeadScanLineBrightnessPeak;
+    public ConfigEntry<float> cfgAnimOutlineBrightnessPeak;
 
     public ConfigEntry<KeyCode> cfgActiveKey;
 
@@ -172,6 +199,50 @@ public class ScanConfig
             "Effect: Playback volume of the scan sfx.\n" +
             "合法值例子(Example values): 0 / 0.5 / 1（float，0-1）");
 
+        cfgMarkIconSize = cfg.Bind("Style", "MarkIconSize", markIconSize,
+            "作用: 地形标记(白点/红叉)图标的整体大小缩放。\n" +
+            "Effect: Overall size scale of terrain mark icons.\n" +
+            "合法值例子(Example values): 0.5 / 0.8 / 1（float，>0）");
+
+        cfgMarkSafeColor = cfg.Bind("Style", "MarkSafeColor", markSafeColor.r + "," + markSafeColor.g + "," + markSafeColor.b + "," + markSafeColor.a,
+            "作用: 可站立标记(白点)颜色（RGBA 0-1,0-1）。\n" +
+            "Effect: Safe point color as r,g,b,a.\n" +
+            "合法值例子(Example values): 1,1,1,1 / 0.5,0.9,0.6,1（float）");
+        cfgMarkWarningColor = cfg.Bind("Style", "MarkWarningColor", markWarningColor.r + "," + markWarningColor.g + "," + markWarningColor.b + "," + markWarningColor.a,
+            "作用: 警戒标记(黄)颜色（RGBA 0-1,0-1）。\n" +
+            "Effect: Warning point color as r,g,b,a.\n" +
+            "合法值例子(Example values): 1,1,0,1 / 1,0.6,0,1（float）");
+        cfgMarkDangerColor = cfg.Bind("Style", "MarkDangerColor", markDangerColor.r + "," + markDangerColor.g + "," + markDangerColor.b + "," + markDangerColor.a,
+            "作用: 不可站立标记(红叉)颜色（RGBA 0-1,0-1）。\n" +
+            "Effect: Danger mark color as r,g,b,a.\n" +
+            "合法值例子(Example values): 1,0,0,1 / 0.9,0.2,0.3,1（float）");
+
+        // ⚠️ 以下为扫描动画目标值，改这些会显著改变扫描视觉节奏，⚠️ 不建议普通玩家修改（仅供高级调试）。
+        cfgAnimHeadScanLineDistance = cfg.Bind("Style", "AnimHeadScanLineDistance", animHeadScanLineDistance,
+            "作用: 扫描线头部扩散的目标距离。⚠️ 不建议修改（高级调试）。\n" +
+            "Effect: Target spread distance of the head scan line.\n" +
+            "合法值例子(Example values): 200 / 250 / 300（float，>0）");
+        cfgAnimScanRange = cfg.Bind("Style", "AnimScanRange", animScanRange,
+            "作用: 扫描波范围目标。⚠️ 不建议修改（高级调试）。\n" +
+            "Effect: Target range of the scan wave.\n" +
+            "合法值例子(Example values): 3 / 5 / 8（float，>0）");
+        cfgAnimOutlineStarDistance = cfg.Bind("Style", "AnimOutlineStarDistance", animOutlineStarDistance,
+            "作用: 描边距离带目标。⚠️ 不建议修改（高级调试）。\n" +
+            "Effect: Target outline star distance.\n" +
+            "合法值例子(Example values): 20 / 30 / 40（float，>0）");
+        cfgAnimScanLineBrightnessPeak = cfg.Bind("Style", "AnimScanLineBrightnessPeak", animScanLineBrightnessPeak,
+            "作用: 平行扫描线亮度峰值。⚠️ 不建议修改（高级调试）。\n" +
+            "Effect: Peak brightness of scan lines.\n" +
+            "合法值例子(Example values): 0.5 / 1 / 2（float，0+）");
+        cfgAnimHeadScanLineBrightnessPeak = cfg.Bind("Style", "AnimHeadScanLineBrightnessPeak", animHeadScanLineBrightnessPeak,
+            "作用: 头部扫描线亮度峰值。⚠️ 不建议修改（高级调试）。\n" +
+            "Effect: Peak brightness of the head scan line.\n" +
+            "合法值例子(Example values): 0.5 / 1 / 2（float，0+）");
+        cfgAnimOutlineBrightnessPeak = cfg.Bind("Style", "AnimOutlineBrightnessPeak", animOutlineBrightnessPeak,
+            "作用: 描边亮度峰值。⚠️ 不建议修改（高级调试）。\n" +
+            "Effect: Peak brightness of the outline.\n" +
+            "合法值例子(Example values): 0.5 / 1 / 2（float，0+）");
+
 
         // parse helpers
         Color ParseColor(string s)
@@ -225,8 +296,21 @@ public class ScanConfig
                 headScanLineDistance = cfgHeadScanLineDistance.Value;
                 scanCenterWS = ParseVec3(cfgScanCenterWS.Value);
                 outlineStarDistance = cfgOutlineStarDistance.Value;
+                horizontalCount = cfgHorizontalCount.Value;
+                verticalCount = cfgVerticalCount.Value;
                 scanCooldown = cfgScanCooldown.Value;
                 sfxVolume = cfgSfxVolume.Value;
+                markIconSize = cfgMarkIconSize.Value;
+                markSafeColor = ParseColor(cfgMarkSafeColor.Value);
+                markWarningColor = ParseColor(cfgMarkWarningColor.Value);
+                markDangerColor = ParseColor(cfgMarkDangerColor.Value);
+                animHeadScanLineDistance = cfgAnimHeadScanLineDistance.Value;
+                animScanRange = cfgAnimScanRange.Value;
+                animOutlineStarDistance = cfgAnimOutlineStarDistance.Value;
+                animScanLineBrightnessPeak = cfgAnimScanLineBrightnessPeak.Value;
+                animHeadScanLineBrightnessPeak = cfgAnimHeadScanLineBrightnessPeak.Value;
+                animOutlineBrightnessPeak = cfgAnimOutlineBrightnessPeak.Value;
+                activeKey = cfgActiveKey.Value;
             }
             catch
             {
@@ -259,8 +343,21 @@ public class ScanConfig
             cfgHeadScanLineDistance.SettingChanged += (s, e) => UpdateFromConfig();
             cfgScanCenterWS.SettingChanged += (s, e) => UpdateFromConfig();
             cfgOutlineStarDistance.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgHorizontalCount.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgVerticalCount.SettingChanged += (s, e) => UpdateFromConfig();
             cfgScanCooldown.SettingChanged += (s, e) => UpdateFromConfig();
             cfgSfxVolume.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgMarkIconSize.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgMarkSafeColor.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgMarkWarningColor.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgMarkDangerColor.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgAnimHeadScanLineDistance.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgAnimScanRange.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgAnimOutlineStarDistance.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgAnimScanLineBrightnessPeak.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgAnimHeadScanLineBrightnessPeak.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgAnimOutlineBrightnessPeak.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgActiveKey.SettingChanged += (s, e) => UpdateFromConfig();
         }
         catch
         {
@@ -286,6 +383,20 @@ public class ScanConfig
         steepSpawnProb = other.steepSpawnProb;
         midSpawnProb = other.midSpawnProb;
         flatSpawnProb = other.flatSpawnProb;
+        markIconSize = other.markIconSize;
+        markSafeColor = other.markSafeColor;
+        markWarningColor = other.markWarningColor;
+        markDangerColor = other.markDangerColor;
+        horizontalCount = other.horizontalCount;
+        verticalCount = other.verticalCount;
+        scanCooldown = other.scanCooldown;
+        sfxVolume = other.sfxVolume;
+        animHeadScanLineDistance = other.animHeadScanLineDistance;
+        animScanRange = other.animScanRange;
+        animOutlineStarDistance = other.animOutlineStarDistance;
+        animScanLineBrightnessPeak = other.animScanLineBrightnessPeak;
+        animHeadScanLineBrightnessPeak = other.animHeadScanLineBrightnessPeak;
+        animOutlineBrightnessPeak = other.animOutlineBrightnessPeak;
     }
 }
 

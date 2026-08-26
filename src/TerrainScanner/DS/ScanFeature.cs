@@ -62,27 +62,44 @@ public class ScanFeature : ScriptableRendererFeature
         var markMaterial = _instance.config.markMaterial;
         if (material != null)
         {
+            // 先应用 cfg 静态外观（颜色/宽度，不受下方动画覆盖），让 cfg 的 Style 项真正生效
+            try
+            {
+                material.SetColor(ScanColorHead, _instance.config.scanColorHead);
+                material.SetColor(ScanColor, _instance.config.scanColor);
+                material.SetFloat(OutlineWidth, _instance.config.outlineWidth);
+                material.SetFloat(ScanLineWidth, _instance.config.scanLineWidth);
+                material.SetFloat(ScanLineInterval, _instance.config.scanLineInterval);
+                material.SetFloat(HeadScanLineWidth, _instance.config.headScanLineWidth);
+            }
+            catch (Exception ex)
+            {
+                TerrainScannerPlugin.Logger?.LogWarning($"[ScanFeature] apply cfg to scan material failed: {ex.Message}");
+            }
             material.SetVector(ScanCenterWs, scanCenter);
             material.SetFloat(HeadScanLineDistance, 4);
-            var tween1 = material.DOFloat(250, HeadScanLineDistance, 3.5f).SetEase(Ease.InSine);
+            var tween1 = material.DOFloat(_instance.config.animHeadScanLineDistance, HeadScanLineDistance, 3.5f).SetEase(Ease.InSine);
             if (tween1 != null) tween1.onComplete += () => { canScan = true; };
             material.SetFloat(ScanRange, 1);
-            material.DOFloat(5, ScanRange, 1.5f).SetEase(Ease.InSine).SetDelay(1);
+            material.DOFloat(_instance.config.animScanRange, ScanRange, 1.5f).SetEase(Ease.InSine).SetDelay(1);
             material.SetFloat(ScanLineBrightness, 0.3f);
             material.SetFloat(HeadScanLineBrightness, 0);
-            material.DOFloat(1, ScanLineBrightness, 0.2f).SetDelay(0.25f);
-            material.DOFloat(1, HeadScanLineBrightness, 0.1f).SetDelay(0.25f);
+            material.DOFloat(_instance.config.animScanLineBrightnessPeak, ScanLineBrightness, 0.2f).SetDelay(0.25f);
+            material.DOFloat(_instance.config.animHeadScanLineBrightnessPeak, HeadScanLineBrightness, 0.1f).SetDelay(0.25f);
             material.DOFloat(0, ScanLineBrightness, 0.5f).SetDelay(2.25f).SetEase(Ease.Linear);
             material.DOFloat(0, HeadScanLineBrightness, 0.5f).SetDelay(2.25f).SetEase(Ease.Linear);
-            material.SetFloat(OutlineBrightness, 1);
+            material.SetFloat(OutlineBrightness, _instance.config.animOutlineBrightnessPeak);
             material.SetFloat(OutlineStarDistance, 0);
+            // 描边原逻辑：扫描开始描边即亮，2.25s 后 0.5s 内淡出；近区远区描边同时保留。
             material.DOFloat(0, OutlineBrightness, 0.5f).SetDelay(2.25f).SetEase(Ease.Linear);
-            material.DOFloat(30, OutlineStarDistance, 1f).SetEase(Ease.InCubic);
+            material.DOFloat(_instance.config.animOutlineStarDistance, OutlineStarDistance, 1f).SetEase(Ease.InCubic);
         }
         if (markMaterial != null)
         {
             markMaterial.SetFloat(ColorAlpha, 0);
-            markMaterial.DOFloat(1, ColorAlpha, 1f);
+            // 时间轴：音频(立即) → WaitForSeconds 0.5s 扫描线才开始扩散(已由 ActiveScan 延迟保证) → 再过 0.5s 所有点 0.1s 内淡入
+            float revealDelay = 0.5f;
+            markMaterial.DOFloat(1, ColorAlpha, 0.1f).SetDelay(revealDelay);
             markTween = markMaterial.DOFloat(0, ColorAlpha, 1f).SetDelay(7);
             if (markTween != null) markTween.onComplete += () => { showMark = false; };
         }

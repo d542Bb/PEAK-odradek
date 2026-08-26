@@ -36,6 +36,32 @@ public static class ScanMarkRenderer
         int mask = LayerMask.GetMask("Scan", "Road");
         if (mask == 0) mask = Physics.DefaultRaycastLayers;
 
+        // 应用标记图标大小（TerrianMarks 材质的 _IconSize）
+        if (config?.markMaterial != null)
+        {
+            try
+            {
+                float sz = (config.markIconSize > 0.001f) ? config.markIconSize : 1f;
+                if (Mathf.Abs(config.markMaterial.GetFloat("_IconSize") - sz) > 0.0001f)
+                    config.markMaterial.SetFloat("_IconSize", sz);
+            }
+            catch (Exception ex)
+            {
+                TerrainScannerPlugin.Logger?.LogWarning($"[ScanMarkRenderer] _IconSize set failed: {ex.Message}");
+            }
+            // 应用标记颜色（Safe/Warning/Danger）
+            try
+            {
+                config.markMaterial.SetColor("_SafeColor", config.markSafeColor);
+                config.markMaterial.SetColor("_WarningColor", config.markWarningColor);
+                config.markMaterial.SetColor("_DangerColor", config.markDangerColor);
+            }
+            catch (Exception ex)
+            {
+                TerrainScannerPlugin.Logger?.LogWarning($"[ScanMarkRenderer] mark color set failed: {ex.Message}");
+            }
+        }
+
         float steepProb = config?.steepSpawnProb ?? 0.1f;
         float midProb = config?.midSpawnProb ?? 0.3f;
         float flatProb = config?.flatSpawnProb ?? 0.0002f;
