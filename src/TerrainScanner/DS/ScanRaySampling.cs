@@ -9,10 +9,10 @@ public static class ScanRaySampling
 {
     public enum RayMarkCategory
     {
-        Road = 0,
-        Flat = 1,
-        MidSlope = 2,
-        Steep = 3,
+        Road = 0,       // 走道 / 触发器（保留原语义）
+        Safe = 1,       // 可站立（白点）≈ Foothold 的 standable
+        Warning = 2,    // 警戒（保留，暂未启用）
+        Danger = 3,     // 不可站立（红叉）≈ Foothold 的 non-standable
         Undefined = 4
     }
 
@@ -28,64 +28,47 @@ public static class ScanRaySampling
 
         try
         {
-            var forward = player.forward;
-            var right = player.right;
+            // 相机视锥采样：采样点直接由相机视锥截面（FOV + 宽高比）生成，沿视线方向 raycast 地形。
+            // 这样扫描区域天然是锥形、跟随镜头俯仰/摇头，不会随视角退化成平铺矩形/长方形。
+            var cam = Camera.main;
+            if (cam == null)
+            {
+                TerrainScannerPlugin.Logger?.LogWarning("[ScanRaySampling] Camera.main is null, cannot do frustum sampling.");
+                return;
+            }
 
-            // Ray origin height: prefer camera eye height (if available), otherwise player's height.
-            float originBaseY = player.position.y;
-            if (Camera.main != null) originBaseY = Camera.main.transform.position.y;
-            originBaseY += config?.sampling_originHeightOffset ?? 0.9f; // configurable offset above camera/player
-
-            // Move the origin slightly forward so sampling concentrates in front of the player (climbing direction)
-            Vector3 originCenter = new Vector3(player.position.x, originBaseY, player.position.z) + forward * (config?.sampling_forwardOffset ?? 1.0f);
-
-            // Read tunables from config (fall back to constants if config is null)
-            float centerShapeExp = config?.sampling_centerShapeExponent ?? 0.75f;
+            // jitter 减少锯齿；maxDistance 控制视线扫描距离
             float jitterScale = config?.sampling_jitterScale ?? 0.06f;
-            float rowStepMultiplier = config?.sampling_rowStepMultiplier ?? 0.9f;
-
-            // For climbing scenes we care most about the center-forward area. Use a non-linear mapping
-            // for horizontal sample positions so samples concentrate near the center.
-            float halfWidth = (horizCount * gridStep) * 0.5f;
-
-            // Control distances: shorter primary downward rays, longer angled rays for walls (from config)
-            float maxDistanceShort = config?.sampling_maxDistanceShort ?? 12f; // ground / ledge detection
+            float maxDistance = config?.sampling_maxDistanceShort ?? 12f;
 
             int raysDone = 0;
 
-            // Starting offset backward so first rows are near player and subsequent rows step forward
-            Vector3 rowBase = originCenter - forward * (gridStep * 0.5f);
-
             for (int i = 0; i < vertCount; i++)
             {
-                // Move row forward; rows closer to the player are sampled more finely (use configurable taper)
-                float rowOffset = i * gridStep * rowStepMultiplier;
-                Vector3 rowOrigin = rowBase + forward * rowOffset;
+                // v: 视锥纵向归一化坐标 [0,1]（屏幕顶→底）
+                float v0 = (vertCount == 1) ? 0.5f : (i / (float)(vertCount - 1));
+                // 深度分布：把样本向远处(屏幕顶, v→0)集中、近处(屏幕底, v→1)放稀，
+                // 缓解视锥透视造成的"近处过密、远处几乎不采样"。
+                v0 = Mathf.Pow(v0, 1.5f);
 
                 for (int j = 0; j < horizCount; j++)
                 {
-                    // map j from [0,h-1] to [-0.5,0.5] then apply a power curve to concentrate near center
-                    float u = (horizCount == 1) ? 0f : (j / (float)(horizCount - 1)) - 0.5f;
-                    float shaped = Mathf.Sign(u) * Mathf.Pow(Mathf.Abs(u), centerShapeExp);
-                    float xOffset = shaped * halfWidth;
+                    // u: 视锥横向归一化坐标 [0,1]（屏幕左→右）
+                    float u0 = (horizCount == 1) ? 0.5f : (j / (float)(horizCount - 1));
 
-                    // jitter a little to reduce aliasing
-                    float jitterX = UnityEngine.Random.Range(-jitterScale, jitterScale) * gridStep;
-                    float jitterZ = UnityEngine.Random.Range(-jitterScale, jitterScale) * gridStep;
+                    // 加一点抖动，减少锯齿（不离散到量变矩形边界）
+                    float ju = Mathf.Clamp01(u0 + UnityEngine.Random.Range(-jitterScale, jitterScale));
+                    float jv = Mathf.Clamp01(v0 + UnityEngine.Random.Range(-jitterScale, jitterScale));
 
-                    Vector3 rayOrigin = rowOrigin - right * (xOffset + jitterX) + forward * jitterZ;
-
-                    // Primary: straight down to detect ground/ledges
-                    RaycastHit hitDown;
-                    Physics.Raycast(rayOrigin, Vector3.down, out hitDown, maxDistanceShort, layerMask);
-                    try { onHit?.Invoke(hitDown, i, j); } catch (Exception ex) { TerrainScannerPlugin.Logger?.LogWarning($"[ScanRaySampling] onHit callback threw: {ex.Message}"); }
-                    raysDone++;
-                    if (raysDone >= maxRays) return;
-
-                    // NOTE: Angled/forward rays have been removed because they caused angle misclassification
-                    // (flat ground being detected as steep when hitting near-vertical faces). We now do
-                    // strictly vertical downward sampling to ensure normals are sampled consistently.
-
+                    // 从相机经视锥方向生成射线，命中地形即为采样点
+                    Ray ray = cam.ViewportPointToRay(new Vector2(ju, jv));
+                    RaycastHit hit;
+                    if (Physics.Raycast(ray, out hit, maxDistance, layerMask))
+                    {
+                        try { onHit?.Invoke(hit, i, j); } catch (Exception ex) { TerrainScannerPlugin.Logger?.LogWarning($"[ScanRaySampling] onHit callback threw: {ex.Message}"); }
+                        raysDone++;
+                        if (raysDone >= maxRays) return;
+                    }
                 }
 
                 // yield each row to avoid frame hitch and allow lights/physics to update

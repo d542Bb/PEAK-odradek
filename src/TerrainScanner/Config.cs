@@ -28,7 +28,7 @@ public class ScanConfig
 
     // Dynamics (controlled by code / config)
     public float scanLineBrightness = 2.5f;
-    public float scanRange = 5f;
+    public float scanRange = 10f;
     public float outlineBrightness = 1.32f;
     public float headScanLineDistance = 13.2f;
     public Vector3 scanCenterWS = new Vector3(123.05f, 36.3f, 147.86f);
@@ -46,7 +46,7 @@ public class ScanConfig
     public float flatSpawnProb = 0.0002f;
 
     // Sampling / scanning tunables (sensible defaults for climbing scenarios)
-    public float sampling_maxDistanceShort = 12f;      // short downward rays (ground/ledge)
+    public float sampling_maxDistanceShort = 30f;      // frustum raycast length (ground / reflection)
     public float sampling_maxDistanceLong = 60f;       // angled/forward rays (walls/cliffs)
     public float sampling_centerShapeExponent = 0.75f; // exponent shaping center density (0.0..2.0)
     public float sampling_centerColumnThreshold = 0.25f; // fraction of columns considered "center"
@@ -61,8 +61,14 @@ public class ScanConfig
     public int verticalCount = 50;
     public float gridStep = 0.5f;
 
+    // Scan trigger cooldown (seconds): shared by the scan effect and the sfx playback
+    public float scanCooldown = 0.8f;
+
+    // Scan sfx playback volume (0..1)
+    public float sfxVolume = 1f;
+
     // active scan key (can be changed at runtime)
-    public KeyCode activeKey = KeyCode.Q;
+    public KeyCode activeKey = KeyCode.F;
 
     // BepInEx config entries (populated by Bind)
     public ConfigEntry<string> cfgScanColorHead;
@@ -77,13 +83,11 @@ public class ScanConfig
     public ConfigEntry<float> cfgHeadScanLineDistance;
     public ConfigEntry<string> cfgScanCenterWS;
     public ConfigEntry<float> cfgOutlineStarDistance;
-    public ConfigEntry<float> cfgSteepSpawnProb;
-    public ConfigEntry<float> cfgMidSpawnProb;
-    public ConfigEntry<float> cfgFlatSpawnProb;
 
     public ConfigEntry<int> cfgHorizontalCount;
     public ConfigEntry<int> cfgVerticalCount;
-    public ConfigEntry<float> cfgGridStep;
+    public ConfigEntry<float> cfgScanCooldown;
+    public ConfigEntry<float> cfgSfxVolume;
 
     public ConfigEntry<KeyCode> cfgActiveKey;
 
@@ -97,33 +101,76 @@ public class ScanConfig
         _bound = true;
         var cfg = plugin.Config;
         cfgActiveKey = cfg.Bind("Controls", "ActiveScanKey", activeKey,
-            "Key to trigger an active scan");
+            "作用: 按下触发一次扫描的按键。\n" +
+            "Effect: Key that triggers an active scan.\n" +
+            "合法值例子(Example values): Q / F / V（Unity KeyCode 键名）.");
         cfgScanColorHead = cfg.Bind("Style", "ScanColorHead", scanColorHead.r + "," + scanColorHead.g + "," + scanColorHead.b + "," + scanColorHead.a,
-            "Scan head color as r,g,b,a");
+            "作用: 扫描头部颜色（RGBA 四通道 0-1）。\n" +
+            "Effect: Scan head color as r,g,b,a.\n" +
+            "合法值例子(Example values): 0.05,0.57,0.85,1 / 1,1,1,1");
         cfgScanColor = cfg.Bind("Style", "ScanColor", scanColor.r + "," + scanColor.g + "," + scanColor.b + "," + scanColor.a,
-            "Scan body color as r,g,b,a");
-        cfgOutlineWidth = cfg.Bind("Style", "OutlineWidth", outlineWidth, "Outline width");
-        cfgScanLineWidth = cfg.Bind("Style", "ScanLineWidth", scanLineWidth, "Scan line width");
-        cfgScanLineInterval = cfg.Bind("Style", "ScanLineInterval", scanLineInterval, "Scan line interval");
-        cfgHeadScanLineWidth = cfg.Bind("Style", "HeadScanLineWidth", headScanLineWidth, "Head scan line width");
-        cfgScanLineBrightness = cfg.Bind("Style", "ScanLineBrightness", scanLineBrightness, "Scan line brightness");
-        cfgScanRange = cfg.Bind("Style", "ScanRange", scanRange, "Scan range");
-        cfgOutlineBrightness = cfg.Bind("Style", "OutlineBrightness", outlineBrightness, "Outline brightness");
-        cfgHeadScanLineDistance = cfg.Bind("Style", "HeadScanLineDistance", headScanLineDistance, "Head scan line distance");
+            "作用: 扫描主体颜色（RGBA 四通道 0-1）。\n" +
+            "Effect: Scan body color as r,g,b,a.\n" +
+            "合法值例子(Example values): 0.39,0.74,0.87,1 / 0,1,0,1");
+        cfgOutlineWidth = cfg.Bind("Style", "OutlineWidth", outlineWidth,
+            "作用: 扫描轮廓线宽度。\n" +
+            "Effect: Width of the scan outline.\n" +
+            "合法值例子(Example values): 1.0 / 2.48 / 5.0（float，>0）");
+        cfgScanLineWidth = cfg.Bind("Style", "ScanLineWidth", scanLineWidth,
+            "作用: 扫描线宽度。\n" +
+            "Effect: Width of the scan line.\n" +
+            "合法值例子(Example values): 0.5 / 1 / 2.5（float，>0）");
+        cfgScanLineInterval = cfg.Bind("Style", "ScanLineInterval", scanLineInterval,
+            "作用: 扫描线之间的间隔。\n" +
+            "Effect: Interval between scan lines.\n" +
+            "合法值例子(Example values): 0.5 / 1 / 2（float，>0）");
+        cfgHeadScanLineWidth = cfg.Bind("Style", "HeadScanLineWidth", headScanLineWidth,
+            "作用: 扫描头部线宽度。\n" +
+            "Effect: Width of the head scan line.\n" +
+            "合法值例子(Example values): 0.5 / 1 / 2（float，>0）");
+        cfgScanLineBrightness = cfg.Bind("Style", "ScanLineBrightness", scanLineBrightness,
+            "作用: 扫描线亮度。\n" +
+            "Effect: Brightness of the scan line.\n" +
+            "合法值例子(Example values): 0.5 / 2.5 / 5（float，>0）");
+        cfgScanRange = cfg.Bind("Style", "ScanRange", scanRange,
+            "作用: 扫描作用范围。\n" +
+            "Effect: Scan reach/range.\n" +
+            "合法值例子(Example values): 3 / 5 / 10（float，>0）");
+        cfgOutlineBrightness = cfg.Bind("Style", "OutlineBrightness", outlineBrightness,
+            "作用: 扫描轮廓亮度。\n" +
+            "Effect: Brightness of the outline.\n" +
+            "合法值例子(Example values): 0.5 / 1.32 / 3（float，>0）");
+        cfgHeadScanLineDistance = cfg.Bind("Style", "HeadScanLineDistance", headScanLineDistance,
+            "作用: 扫描头部线距离。\n" +
+            "Effect: Distance of the head scan line.\n" +
+            "合法值例子(Example values): 5 / 13.2 / 30（float，>0）");
         cfgScanCenterWS = cfg.Bind("Style", "ScanCenterWS", scanCenterWS.x + "," + scanCenterWS.y + "," + scanCenterWS.z,
-            "Scan center world-space as x,y,z");
-        cfgOutlineStarDistance = cfg.Bind("Style", "OutlineStarDistance", outlineStarDistance, "Outline star distance");
-        
-        cfgSteepSpawnProb = cfg.Bind("prob", "SteepSpawnProb", steepSpawnProb,
-            "Probability to spawn particle on steep slopes (category 3)");
-        cfgMidSpawnProb = cfg.Bind("prob", "MidSpawnProb", midSpawnProb,
-            "Probability to spawn particle on mid slopes (category 2)");
-        cfgFlatSpawnProb = cfg.Bind("prob", "FlatSpawnProb", flatSpawnProb,
-            "Probability to spawn particle on flat slopes (category 1)");
+            "作用: 扫描中心的世界坐标（x,y,z）。\n" +
+            "Effect: Scan center world-space as x,y,z.\n" +
+            "合法值例子(Example values): 123.05,36.3,147.86 / 0,10,0");
+        cfgOutlineStarDistance = cfg.Bind("Style", "OutlineStarDistance", outlineStarDistance,
+            "作用: 轮廓星标距离。\n" +
+            "Effect: Outline 'star' distance.\n" +
+            "合法值例子(Example values): 10 / 30 / 60（float，>0）");
 
-        cfgHorizontalCount = cfg.Bind("Performance", "HorizontalCount", horizontalCount, "Number of horizontal samples");
-        cfgVerticalCount = cfg.Bind("Performance", "VerticalCount", verticalCount, "Number of vertical samples");
-        cfgGridStep = cfg.Bind("Performance", "GridStep", gridStep, "Grid step size");
+        cfgHorizontalCount = cfg.Bind("Performance", "HorizontalCount", horizontalCount,
+            "作用: 相机视锥截面横向样本数量（采样分辨率）。\n" +
+            "Effect: Number of horizontal samples across the camera frustum.\n" +
+            "合法值例子(Example values): 10 / 40 / 80（int，>=1）");
+        cfgVerticalCount = cfg.Bind("Performance", "VerticalCount", verticalCount,
+            "作用: 相机视锥截面纵向样本数量（采样分辨率）。\n" +
+            "Effect: Number of vertical samples across the camera frustum.\n" +
+            "合法值例子(Example values): 20 / 50 / 100（int，>=1）");
+
+        cfgScanCooldown = cfg.Bind("Performance", "ScanCooldown", scanCooldown,
+            "作用: 扫描触发冷却（秒），扫描效果与扫描音效共用此冷却，冷却期间不可重复触发。\n" +
+            "Effect: Trigger cooldown in seconds, shared by the scan effect and its sfx.\n" +
+            "合法值例子(Example values): 0.3 / 0.8 / 2.0（float，>0）");
+
+        cfgSfxVolume = cfg.Bind("Style", "SfxVolume", sfxVolume,
+            "作用: 扫描音效播放音量。\n" +
+            "Effect: Playback volume of the scan sfx.\n" +
+            "合法值例子(Example values): 0 / 0.5 / 1（float，0-1）");
 
 
         // parse helpers
@@ -178,9 +225,8 @@ public class ScanConfig
                 headScanLineDistance = cfgHeadScanLineDistance.Value;
                 scanCenterWS = ParseVec3(cfgScanCenterWS.Value);
                 outlineStarDistance = cfgOutlineStarDistance.Value;
-                steepSpawnProb = cfgSteepSpawnProb.Value;
-                midSpawnProb = cfgMidSpawnProb.Value;
-                flatSpawnProb = cfgFlatSpawnProb.Value;
+                scanCooldown = cfgScanCooldown.Value;
+                sfxVolume = cfgSfxVolume.Value;
             }
             catch
             {
@@ -213,9 +259,8 @@ public class ScanConfig
             cfgHeadScanLineDistance.SettingChanged += (s, e) => UpdateFromConfig();
             cfgScanCenterWS.SettingChanged += (s, e) => UpdateFromConfig();
             cfgOutlineStarDistance.SettingChanged += (s, e) => UpdateFromConfig();
-            cfgSteepSpawnProb.SettingChanged += (s, e) => UpdateFromConfig();
-            cfgMidSpawnProb.SettingChanged += (s, e) => UpdateFromConfig();
-            cfgFlatSpawnProb.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgScanCooldown.SettingChanged += (s, e) => UpdateFromConfig();
+            cfgSfxVolume.SettingChanged += (s, e) => UpdateFromConfig();
         }
         catch
         {

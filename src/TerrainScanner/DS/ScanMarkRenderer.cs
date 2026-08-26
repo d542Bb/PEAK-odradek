@@ -54,31 +54,26 @@ public static class ScanMarkRenderer
             var normal = hit.normal;
             if (hit.collider.isTrigger)
             {
+                // 走道/触发器：保留原有 Road 语义
                 marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Road;
                 marks[idx].markPosition = Vector3.zero;
                 return;
             }
-            // 陡坡 
-            if (normal.y < Mathf.Cos(50f * Mathf.Deg2Rad))
+
+            // 立足判定（复刻 Foothold）：按表面法线与竖直方向的夹角判断是否可站立。
+            // < 50° 可站立（含平坡 < 30°，平坡也算可站，白点）；>= 50° 不可站立（红叉）。
+            float angle = Vector3.Angle(Vector3.up, normal);
+            if (angle < 50f)
             {
-                marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Steep;
+                marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Safe;
                 marks[idx].markPosition = hit.point;
-                if (UnityEngine.Random.value < steepProb) ParticleSpawner.ShootParticle(hit.point, normal, 3, config);
+                if (UnityEngine.Random.value < flatProb) ParticleSpawner.ShootParticle(hit.point, normal, 1, config);
             }
-            // 缓坡
-            else if (normal.y < Mathf.Cos(30f * Mathf.Deg2Rad))
-            {
-                marks[idx].markCategory = ScanRaySampling.RayMarkCategory.MidSlope;
-                marks[idx].markPosition = hit.point;
-                if (UnityEngine.Random.value < midProb) ParticleSpawner.ShootParticle(hit.point, normal, 1, config);
-            }
-            // 平地
             else
             {
-                marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Flat;
+                marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Danger;
                 marks[idx].markPosition = hit.point;
-                if (UnityEngine.Random.value < flatProb)
-                    ParticleSpawner.ShootParticle(hit.point, normal, 1, config);
+                if (UnityEngine.Random.value < steepProb) ParticleSpawner.ShootParticle(hit.point, normal, 3, config);
             }
         };
 

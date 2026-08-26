@@ -123,6 +123,10 @@ public class ScanFeature : ScriptableRendererFeature
 
     static bool canScan = true;
     static bool showMark = false;
+
+    // Expose whether a scan can currently start (not already in progress), so ActiveScan can
+    // keep sfx playback in sync with the actual scan execution (cooldown shared).
+    public static bool CanScan => canScan;
     static Tween markTween;
 
     #region CORES
@@ -171,6 +175,10 @@ public class ScanFeature : ScriptableRendererFeature
                 passData.localVerticalCount = settings.verticalCount;
                 passData.depthTarget = depthTarget;
                 builder.SetRenderAttachment(colorTarget, 0, AccessFlags.ReadWrite);
+                // 绑定活跃深度为深度附件，真正启用深度测试（ZTest LEqual）。
+                // 此前只用 UseTexture 把 depth 给扫描波采样，pass 没有可用的深度缓冲，
+                // 导致标记 shader 的 ZTest LEqual / SV_DEPTH 全部失效 → 后端标记穿墙透视。
+                builder.SetRenderAttachmentDepth(depthTarget, AccessFlags.ReadWrite);
                 builder.UseTexture(depthTarget);
                 builder.SetRenderFunc((PassData data, RasterGraphContext ctx) => ExecutePass(data, ctx));
             }
