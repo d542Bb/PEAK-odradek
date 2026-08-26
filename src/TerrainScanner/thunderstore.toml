@@ -4,12 +4,12 @@ schemaVersion = "0.0.2"
 repository = "https://thunderstore.io"
 
 [package]
-namespace = "blumewmew"
+namespace = "d542Bb"
 name = "TerrainScanner"
 description = "TerrainScanner — Death Stranding style terrain scanner for PEAK. Provides persistent ground marks, scan outlines, and customizable visuals."
-websiteUrl = "https://github.com/haruyuki/TerrainScanner"
+websiteUrl = "https://github.com/d542Bb/TerrainScanner"
 containsNsfwContent = false
-authors = ["LIghtJUNction", "blumewmew"]
+authors = ["LIghtJUNction", "blumewmew", "d542Bb"]
 readme = "./README.md"
 icon = "./icon.png"
 license = "./LICENSE"
@@ -27,7 +27,7 @@ license = "./LICENSE"
 outdir = "../../artifacts/thunderstore/"
 
 [[build.copy]]
-source = "../../artifacts/bin/TerrainScanner/release/com.github.LIghtJUNction.TerrainScanner.dll"
+source = "../../artifacts/bin/TerrainScanner/release/d542Bb.TerrainScanner.dll"
 target = "plugins/"
 
 [[build.copy]]

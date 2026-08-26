@@ -1,7 +1,7 @@
 # TerrainScanner
 
-![GitHub](https://img.shields.io/badge/GitHub-TerrainScanner-LIghtJUNction?style=for-the-badge&logo=GitHub)
-![Thunderstore Version](https://img.shields.io/thunderstore/v/LIghtPeak/TerrainScanner?style=for-the-badge&logo=thunderstore&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-TerrainScanner-d542Bb?style=for-the-badge&logo=GitHub)
+![Thunderstore Version](https://img.shields.io/thunderstore/v/d542Bb/TerrainScanner?style=for-the-badge&logo=thunderstore&logoColor=white)
 
 ![](20251011_144624_TS.jpg)
 
@@ -95,5 +95,11 @@ Contributions, issues, and suggestions are welcome. When opening a PR:
 ## License
 
 This project is licensed under the terms in `LICENSE`.
+
+- 参考/灵感来源与早期版权：**Tzebruh**（MIT）——[FengLvv/Death-stranding-scan](https://github.com/FengLvv/Death-stranding-scan) 提供了移植基础。
+- 原作者：**LLightJunction / LIghtJUNction**（MIT）。
+- 本仓库源码派生自上述 MIT 授权的代码，按 **GPL-3.0** 发布（见仓库根目录 `LICENSE`）。
+- 贡献者/维护者：**d542Bb**。
+- 修改自 haruyuki/TerrainScanner（原 PeakMods fork），仅保留地形扫描器部分；改动记录见仓库根 `README.md` 与 `CHANGELOG.md`。
 
 ---

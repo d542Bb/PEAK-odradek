@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>com.github.LIghtJUNction.TerrainScanner</AssemblyName>
+    <AssemblyName>d542Bb.TerrainScanner</AssemblyName>
     <AssemblyTitle>TerrainScanner</AssemblyTitle>
     <Version>1.1.2</Version>
     <Nullable>disable</Nullable>
@@ -23,6 +23,30 @@
 
   <ItemGroup>
     <PackageReference Update="BepInEx.AssemblyPublicizer.MSBuild" Version="0.5.0-beta.1" />
+  </ItemGroup>
+
+  <!--
+    引用 PEAK 游戏自带的 Unity 引擎 / URP / DOTween 托管 DLL（只读引用，不复制、不修改游戏目录）。
+    路径来自 Directory.Build.props 的 $(ManagedDir)（游戏 PEAK_Data/Managed/）。
+  -->
+  <ItemGroup>
+    <TSManaged Include="$(ManagedDir)UnityEngine*.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.RenderPipelines*.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.Collections.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.Mathematics.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.Burst.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.Burst.Unsafe.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.Profiling.Core.dll" />
+    <TSManaged Include="$(ManagedDir)Unity.TextMeshPro.dll" />
+    <TSManaged Include="$(ManagedDir)DOTween.dll" />
+    <TSManaged Include="$(ManagedDir)DOTweenPro.dll" />
+    <TSManaged Include="$(ManagedDir)DemiLib.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="@(TSManaged->'%(Filename)')">
+      <HintPath>%(TSManaged.Identity)</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>
