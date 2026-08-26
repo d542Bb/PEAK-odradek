@@ -11,17 +11,15 @@ Terrain scanner is based on shader and is rendered by GPU. And asynchronous fram
 
 ## What it shows
 
-- Slope classification (example thresholds used by the module):
-  - Flat: 0°–30°
-  - Gentle slope: 30°–50°
-  - Steep: 50°–90°
-
-These thresholds are configurable via `ScanConfig` (see below).
+- Standability / slope classification (by terrain normal slope, see `ScanMarkRenderer`):
+  - Gentle (standable): `< 40°` → white point
+  - Medium slope (standable but risky): `40°–50°` → yellow warning
+  - Steep (not standable): `≥ 50°` → red cross
 
 ## Quick install / usage
 
 1. Add the `TerrainScanner` scripts (or compiled DLL) into your Unity project's `Assets/` folder. The source is located in `src/TerrainScanner/` in this repository.
-2. In your scene, attach `ActiveScan` to a GameObject (for example, the Player or Camera). By default the scanner is triggered with the `Q` key (see `ActiveScan.cs`).
+2. In your scene, attach `ActiveScan` to a GameObject (for example, the Player or Camera). By default the scanner is triggered with the `F` key (see `ActiveScan.cs`).
 3. Ensure `ScanConfig` is properly populated at runtime with the required materials and particle prefabs:
 
    - `scanMaterial` (shader for scan wave)
@@ -97,6 +95,7 @@ Contributions, issues, and suggestions are welcome. When opening a PR:
 This project is licensed under the terms in `LICENSE`.
 
 - 参考/灵感来源与早期版权：**Tzebruh**（MIT）——[FengLvv/Death-stranding-scan](https://github.com/FengLvv/Death-stranding-scan) 提供了移植基础。
+- 立足判定（可站立/坡面分级）参考：**Tzebruh**（MIT）——[Tzebruh/Foothold](https://github.com/Tzebruh/Foothold)。
 - 原作者：**LLightJunction / LIghtJUNction**（MIT）。
 - 本仓库源码派生自上述 MIT 授权的代码，按 **GPL-3.0** 发布（见仓库根目录 `LICENSE`）。
 - 贡献者/维护者：**d542Bb**。

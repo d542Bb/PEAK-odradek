@@ -6,15 +6,17 @@ PEAK 的地形扫描器 mod，基于 shader，由 GPU 渲染，采用异步逐�
 
 ## 功能
 
-- 坡面分类（阈值可在 `ScanConfig` 中调整）：
-  - 平地：0°–30°
-  - 缓坡：30°–50°
-  - 陡坡：50°–90°
+- 立足/坡面分级（按地形表面法线坡度判定，见 `ScanMarkRenderer`）：
+  - 平缓（可站立）：`< 40°`，显示**白点**
+  - 中等坡度（可站但有风险）：`40°–50°`，显示**黄色警告**
+  - 陡坡（不可站立）：`≥ 50°`，显示**红叉**
+- 相机视锥矩形采样：扫描点阵跟随镜头朝向（Yaw）与位置、不受俯仰影响，命中地表形成规整点阵。
+- 扫描音效（可配置音量/冷却/提前量）、`cfg` 可视化增强固定配置。
 
 ## 快速开始
 
 1. 将 `src/TerrainScanner/` 下的脚本（或编译好的 DLL）放入你的 Unity 工程 `Assets/` 目录。
-2. 在场景中把 `ActiveScan` 挂到某个 GameObject（例如玩家或相机）上。默认用 `Q` 键触发（见 `ActiveScan.cs`）。
+2. 在场景中把 `ActiveScan` 挂到某个 GameObject（例如玩家或相机）上。默认用 `F` 键触发（见 `ActiveScan.cs`）。
 3. 运行时确保 `ScanConfig` 正确填充所需材质与粒子预制体：`scanMaterial`、`markMaterial`，以及可选的 `markParticle1/2/3`。
 
 如果使用 BepInEx mod 加载器，插件可在启动时自动完成这些填充。
@@ -39,6 +41,7 @@ PEAK 的地形扫描器 mod，基于 shader，由 GPU 渲染，采用异步逐�
 ### 引用来源
 
 - **移植基础**：本 mod 的地形扫描方案（基于 shader、GPU 渲染、异步逐帧采样）移植自 [FengLvv/Death-stranding-scan](https://github.com/FengLvv/Death-stranding-scan)（**Tzebruh**，MIT）。
+- **立足判定来源**：可站立/坡面分级（白点 / 黄色警告 / 红叉）复刻自 [Tzebruh/Foothold](https://github.com/Tzebruh/Foothold)（**Tzebruh**，MIT）。
 - **代码来源仓库**：代码进一步整理自 [haruyuki/TerrainScanner](https://github.com/haruyuki/TerrainScanner)（原为 PeakMods 的 fork，内含聊天 mod 与地形扫描器 mod），仅取其中地形扫描器部分；原作者 **LLightJunction / LIghtJUNction**（MIT）。
 - **目标游戏生态**：一个用于 **PEAK** 游戏的 mod，通过 **BepInEx** 加载；构建依赖请见 [src/TerrainScanner/TerrainScanner.csproj](src/TerrainScanner/TerrainScanner.csproj)。
 - **贡献者/维护者**：**d542Bb**。
