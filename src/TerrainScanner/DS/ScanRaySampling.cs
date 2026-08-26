@@ -28,50 +28,69 @@ public static class ScanRaySampling
 
         try
         {
-            // 相机视锥采样：采样点直接由相机视锥截面（FOV + 宽高比）生成，沿视线方向 raycast 地形。
-            // 这样扫描区域天然是锥形、跟随镜头俯仰/摇头，不会随视角退化成平铺矩形/长方形。
+            // 以相机为坐标轴的规整矩形采样：矩形平面跟随相机 Yaw(摇头) + Pitch(俯仰)，
+            // 射线沿"相机上向的反方向"(近似世界下方向)投影到地形。这样命中地表后屏幕上呈现
+            // 规整的点阵（一排排水平线），而不是视锥透视造成的"近处扇形密、远处稀"。
             var cam = Camera.main;
             if (cam == null)
             {
-                TerrainScannerPlugin.Logger?.LogWarning("[ScanRaySampling] Camera.main is null, cannot do frustum sampling.");
+                TerrainScannerPlugin.Logger?.LogWarning("[ScanRaySampling] Camera.main is null.");
                 return;
             }
 
-            // jitter 减少锯齿；maxDistance 控制视线扫描距离
+            var camT = cam.transform;
+            // 水平前向：镜头 forward 投影到 y=0 平面，确保矩形在镜头正前方（不会因叉积符号推到后方）
+            Vector3 camHorizFwd = new Vector3(camT.forward.x, 0f, camT.forward.z);
+            if (camHorizFwd.sqrMagnitude < 0.0001f) camHorizFwd = new Vector3(player.forward.x, 0f, player.forward.z);
+            if (camHorizFwd.sqrMagnitude < 0.0001f) camHorizFwd = Vector3.forward;
+            camHorizFwd.Normalize();
+            // 水平右向 = cross(up, fwdH)，跟随镜头摇头方向
+            Vector3 camHorizRight = Vector3.Cross(Vector3.up, camHorizFwd);
+            // 射线方向始终沿世界下方向打，命中地表位置只由起点的水平投影决定，点阵不会因 pitch 变形
+            Vector3 downDir = Vector3.down;
+
+            // 采样参数
+            float originHeightOffset = config?.sampling_originHeightOffset ?? 10f; // 起点抬高量
+            float forwardOffset = config?.sampling_forwardOffset ?? 1.0f;          // 矩形离相机的近平面距离（前向沿水平投影前向推）
+            float step = (gridStep > 0.001f) ? gridStep : 0.5f;                    // 网格间距
             float jitterScale = config?.sampling_jitterScale ?? 0.06f;
-            float maxDistance = config?.sampling_maxDistanceShort ?? 12f;
+            float maxDistance = config?.sampling_maxDistanceShort ?? 30f;          // 向下射线最大距离
 
             int raysDone = 0;
 
             for (int i = 0; i < vertCount; i++)
             {
-                // v: 视锥纵向归一化坐标 [0,1]（屏幕顶→底）
-                float v0 = (vertCount == 1) ? 0.5f : (i / (float)(vertCount - 1));
-                // 深度分布：把样本向远处(屏幕顶, v→0)集中、近处(屏幕底, v→1)放稀，
-                // 缓解视锥透视造成的"近处过密、远处几乎不采样"。
-                v0 = Mathf.Pow(v0, 1.5f);
+                // 行：沿镜头水平前向（yaw方向）推进。vertCount 现在就是"矩形有几排水平线"。
+                float depth = forwardOffset + i * step;
+                Vector3 rowCenter = new Vector3(camT.position.x, camT.position.y + originHeightOffset, camT.position.z)
+                                  + camHorizFwd * depth;
 
                 for (int j = 0; j < horizCount; j++)
                 {
-                    // u: 视锥横向归一化坐标 [0,1]（屏幕左→右）
-                    float u0 = (horizCount == 1) ? 0.5f : (j / (float)(horizCount - 1));
+                    // 列：沿水平右向铺开。把 j 映射到 -0.5..0.5，直接乘总宽度
+                    float half = (horizCount - 1) * step * 0.5f;
+                    float u = (horizCount == 1) ? 0f : (j / (float)(horizCount - 1)) - 0.5f;
+                    float jitterX = UnityEngine.Random.Range(-jitterScale, jitterScale) * step;
+                    float jitterZ = UnityEngine.Random.Range(-jitterScale, jitterScale) * step;
 
-                    // 加一点抖动，减少锯齿（不离散到量变矩形边界）
-                    float ju = Mathf.Clamp01(u0 + UnityEngine.Random.Range(-jitterScale, jitterScale));
-                    float jv = Mathf.Clamp01(v0 + UnityEngine.Random.Range(-jitterScale, jitterScale));
+                    Vector3 rayOrigin = rowCenter
+                                      + camHorizRight * (u * 2f * half + jitterX)
+                                      + camHorizFwd * jitterZ;
 
-                    // 从相机经视锥方向生成射线，命中地形即为采样点
-                    Ray ray = cam.ViewportPointToRay(new Vector2(ju, jv));
-                    RaycastHit hit;
-                    if (Physics.Raycast(ray, out hit, maxDistance, layerMask))
+                    RaycastHit hitDown;
+                    if (Physics.Raycast(rayOrigin, downDir, out hitDown, maxDistance, layerMask))
                     {
-                        try { onHit?.Invoke(hit, i, j); } catch (Exception ex) { TerrainScannerPlugin.Logger?.LogWarning($"[ScanRaySampling] onHit callback threw: {ex.Message}"); }
+                        // 视锥过滤（基于命中点）：避免屏幕外也出标记
+                        var vp = cam.WorldToViewportPoint(hitDown.point);
+                        bool inView = vp.z > 0f && vp.x >= 0f && vp.x <= 1f && vp.y >= 0f && vp.y <= 1f;
+                        if (!inView) continue;
+
+                        try { onHit?.Invoke(hitDown, i, j); } catch (Exception ex) { TerrainScannerPlugin.Logger?.LogWarning($"[ScanRaySampling] onHit callback threw: {ex.Message}"); }
                         raysDone++;
                         if (raysDone >= maxRays) return;
                     }
                 }
 
-                // yield each row to avoid frame hitch and allow lights/physics to update
                 await UniTask.Yield();
             }
         }
