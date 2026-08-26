@@ -2,7 +2,7 @@
 
 PEAK 的地形扫描器 mod：基于 shader 的 `Death Stranding` 风格透视地形扫描，由 GPU 渲染、异步采样，快速且不卡顿。
 
-![TerrainScanner 截图](Assets/ScreenShot.png)
+[![TerrainScanner 效果预览](https://raw.githubusercontent.com/d542Bb/PEAK-odradek/main/Assets/ScreenShot.png)](https://raw.githubusercontent.com/d542Bb/PEAK-odradek/main/Assets/ScreenShot.png)
 
 ## 这是什么
 

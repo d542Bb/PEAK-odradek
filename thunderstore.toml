@@ -42,6 +42,11 @@ target = "/"
 source = "./Assets"
 target = "/Assets"
 
+# 扫描音效放在 dll 同级目录（ActiveScan 从插件目录按 scan_sfx.mp3 加载）
+[[build.copy]]
+source = "./Assets/scan_sfx.mp3"
+target = "plugins/"
+
 # The following config options only apply when using TCLI to publish to Thunderstore directly:
 
 [publish]

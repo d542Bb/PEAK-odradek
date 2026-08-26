@@ -8,7 +8,7 @@ public class ActiveScan : MonoBehaviour
     public static KeyCode activeKey = ScanConfigManager.Current.cfgActiveKey?.Value ?? KeyCode.Q;
 
     // 扫描音效：从插件目录加载 mp3 后缓存，每次扫描触发时播放
-    const string SfxFileName = "奥卓德克扫描音效.mp3";
+    const string SfxFileName = "scan_sfx.mp3";
     static AudioClip scanSfx;
     static bool sfxLoading = false;
     static float lastScanTime = float.MinValue; // 与 ScanCooldown 配合的共用冷却计时

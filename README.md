@@ -4,7 +4,7 @@ PEAK 的地形扫描器 mod，基于 shader，由 GPU 渲染，采用异步逐�
 
 > 本项目最初从 [FengLvv/Death-stranding-scan](https://github.com/FengLvv/Death-stranding-scan) 移植而来。
 
-![TerrainScanner 截图](Assets/ScreenShot.png)
+[![TerrainScanner 效果预览](https://raw.githubusercontent.com/d542Bb/PEAK-odradek/main/Assets/ScreenShot.png)](https://raw.githubusercontent.com/d542Bb/PEAK-odradek/main/Assets/ScreenShot.png)
 
 ## What it shows / 功能
 
