@@ -86,14 +86,21 @@ public static class ScanMarkRenderer
                 return;
             }
 
-            // 立足判定（复刻 Foothold）：按表面法线与竖直方向的夹角判断是否可站立。
-            // < 50° 可站立（含平坡 < 30°，平坡也算可站，白点）；>= 50° 不可站立（红叉）。
+            // 立足判定（复刻 Foothold）：按表面法线与竖直方向的夹角分级。
+            // <40° 平缓（可站立，白点）；40°~50° 中等坡度（可站但有风险，黄色警告）；
+            // >=50° 陡坡（不可站立，红叉）。
             float angle = Vector3.Angle(Vector3.up, normal);
-            if (angle < 50f)
+            if (angle < 40f)
             {
                 marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Safe;
                 marks[idx].markPosition = hit.point;
                 if (UnityEngine.Random.value < flatProb) ParticleSpawner.ShootParticle(hit.point, normal, 1, config);
+            }
+            else if (angle < 50f)
+            {
+                marks[idx].markCategory = ScanRaySampling.RayMarkCategory.Warning;
+                marks[idx].markPosition = hit.point;
+                if (UnityEngine.Random.value < midProb) ParticleSpawner.ShootParticle(hit.point, normal, 2, config);
             }
             else
             {
