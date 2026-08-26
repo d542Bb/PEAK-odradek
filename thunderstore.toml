@@ -12,7 +12,7 @@ containsNsfwContent = false
 authors = ["LIghtJUNction", "blumewmew", "d542Bb"]
 readme = "./README.md"
 icon = "./icon.png"
-license = "./LICENSE"
+license = "./LICENSE-MIT"
 
 
 [package.dependencies]
@@ -23,11 +23,11 @@ Cysharp-UniTask = "2.5.0"
 [build]
 icon = "./icon.png"
 readme = "./README.md"
-license = "./LICENSE"
-outdir = "../../artifacts/thunderstore/"
+license = "./LICENSE-MIT"
+outdir = "artifacts/thunderstore/"
 
 [[build.copy]]
-source = "../../artifacts/bin/TerrainScanner/release/d542Bb.TerrainScanner.dll"
+source = "artifacts/bin/TerrainScanner/release/d542Bb.TerrainScanner.dll"
 target = "plugins/"
 
 [[build.copy]]
@@ -35,7 +35,7 @@ source = "./CHANGELOG.md"
 target = "/"
 
 [[build.copy]]
-source = "./LICENSE"
+source = "./LICENSE-MIT"
 target = "/"
 
 [[build.copy]]
